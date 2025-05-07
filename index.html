@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GFR Calculator</title>
+    <meta name="description" content="Advanced GFR Calculator using CKD-EPI and MDRD formulas">
+    <meta name="theme-color" content="#4f46e5">
+    <link rel="manifest" href="/manifest.json">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @media (display-mode: standalone) {
+            header {
+                padding-top: env(safe-area-inset-top);
+            }
+        }
+        
+        .input-highlight {
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.5);
+        }
+        
+        .result-card {
+            transition: all 0.3s ease;
+        }
+        
+        .result-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .staged-bg {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="max-w-md mx-auto p-4">
+        <!-- Header -->
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-indigo-600 mb-2">GFR Calculator</h1>
+            <p class="text-gray-600">Calculate kidney function using latest formulas</p>
+            <div class="mt-4 flex justify-center space-x-2">
+                <button id="infoBtn" class="p-2 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200 transition">
+                    <i class="fas fa-info-circle"></i>
+                </button>
+                <button id="historyBtn" class="p-2 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200 transition">
+                    <i class="fas fa-history"></i>
+                </button>
+                <button id="installBtn" class="p-2 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200 transition hidden">
+                    <i class="fas fa-download"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Calculator Form -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+            <form id="gfrForm" class="space-y-4">
+                <div>
+                    <label for="formula" class="block text-sm font-medium text-gray-700 mb-1">Formula</label>
+                    <select id="formula" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="ckd-epi">CKD-EPI (2021, recommended)</option>
+                        <option value="mdrd">MDRD (older formula)</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="age" class="block text-sm font-medium text-gray-700 mb-1">Age (years)</label>
+                    <input type="number" id="age" min="18" max="120" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                
+                <div>
+                    <label for="sex" class="block text-sm font-medium text-gray-700 mb-1">Sex</label>
+                    <select id="sex" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="race" class="block text-sm font-medium text-gray-700 mb-1">Race</label>
+                    <select id="race" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="non-black">Non-Black</option>
+                        <option value="black">Black</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="creatinine" class="block text-sm font-medium text-gray-700 mb-1">Serum Creatinine (mg/dL)</label>
+                    <input type="number" id="creatinine" min="0.1" max="20" step="0.01" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                
+                <div class="pt-2">
+                    <button type="submit" class="w-full staged-bg text-white py-3 px-4 rounded-lg font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition">
+                        Calculate GFR
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Results Section -->
+        <div id="results" class="hidden bg-white rounded-xl shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Results</h2>
+            
+            <div class="space-y-4">
+                <div class="result-card bg-indigo-50 rounded-lg p-4 border border-indigo-100">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="font-medium text-indigo-800">GFR (CKD-EPI)</h3>
+                            <p class="text-sm text-indigo-600">2021 formula</p>
+                        </div>
+                        <div id="ckdEpiResult" class="text-2xl font-bold text-indigo-700">--</div>
+                    </div>
+                    <div id="ckdEpiStage" class="mt-2 text-sm font-medium text-indigo-900"></div>
+                </div>
+                
+                <div class="result-card bg-purple-50 rounded-lg p-4 border border-purple-100">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="font-medium text-purple-800">GFR (MDRD)</h3>
+                            <p class="text-sm text-purple-600">Older formula</p>
+                        </div>
+                        <div id="mdrdResult" class="text-2xl font-bold text-purple-700">--</div>
+                    </div>
+                    <div id="mdrdStage" class="mt-2 text-sm font-medium text-purple-900"></div>
+                </div>
+                
+                <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <h3 class="font-medium text-gray-800 mb-2">CKD Stages</h3>
+                    <div class="space-y-2">
+                        <div class="flex items-center">
+                            <div class="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+                            <span class="text-sm">G1: Normal or high (&gt;90 mL/min)</span>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="w-3 h-3 rounded-full bg-blue-500 mr-2"></div>
+                            <span class="text-sm">G2: Mild (60-89 mL/min)</span>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="w-3 h-3 rounded-full bg-yellow-500 mr-2"></div>
+                            <span class="text-sm">G3a: Moderate (45-59 mL/min)</span>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="w-3 h-3 rounded-full bg-orange-500 mr-2"></div>
+                            <span class="text-sm">G3b: Moderate (30-44 mL/min)</span>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
+                            <span class="text-sm">G4: Severe (15-29 mL/min)</span>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="w-3 h-3 rounded-full bg-black mr-2"></div>
+                            <span class="text-sm">G5: Kidney failure (&lt;15 mL/min)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Modal -->
+        <div id="infoModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-white rounded-xl max-w-md w-full max-h-[80vh] overflow-y-auto">
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-indigo-600">About GFR Calculator</h2>
+                        <button id="closeInfoModal" class="text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="space-y-4 text-gray-700">
+                        <p>This calculator estimates Glomerular Filtration Rate (GFR) which measures how well your kidneys are working.</p>
+                        
+                        <h3 class="font-semibold text-indigo-600 mt-4">Formulas Used:</h3>
+                        <div class="bg-indigo-50 p-3 rounded-lg">
+                            <h4 class="font-medium">CKD-EPI 2021 Equation</h4>
+                            <p class="text-sm">The most accurate formula currently available, recommended by kidney disease guidelines.</p>
+                        </div>
+                        
+                        <div class="bg-purple-50 p-3 rounded-lg">
+                            <h4 class="font-medium">MDRD Equation</h4>
+                            <p class="text-sm">Older formula still used in some labs, included for comparison.</p>
+                        </div>
+                        
+                        <h3 class="font-semibold text-indigo-600 mt-4">Interpretation:</h3>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li>Normal GFR varies by age, sex, and body size</li>
+                            <li>Values below 60 for 3+ months indicate chronic kidney disease</li>
+                            <li>Always consult your doctor about your results</li>
+                        </ul>
+                        
+                        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 mt-4">
+                            <p class="text-sm"><strong>Note:</strong> This calculator is for informational purposes only and not a substitute for professional medical advice.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Modal -->
+        <div id="historyModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-white rounded-xl max-w-md w-full max-h-[80vh] overflow-y-auto">
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-indigo-600">Calculation History</h2>
+                        <button id="closeHistoryModal" class="text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <div id="historyList" class="space-y-3">
+                        <!-- History items will be added here -->
+                        <p class="text-gray-500 text-center py-4">No calculations saved yet</p>
+                    </div>
+                    
+                    <div class="mt-4 flex justify-end">
+                        <button id="clearHistory" class="text-red-500 text-sm font-medium hover:text-red-700">Clear History</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Service Worker and PWA Setup -->
+    <script>
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(registration => {
+                    console.log('ServiceWorker registration successful');
+                }).catch(err => {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+
+        // Install Prompt
+        let deferredPrompt;
+        const installBtn = document.getElementById('installBtn');
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.classList.remove('hidden');
+        });
+
+        installBtn.addEventListener('click', () => {
+            installBtn.classList.add('hidden');
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then((choiceResult) => {
+                if (choiceResult.outcome === 'accepted') {
+                    console.log('User accepted install prompt');
+                }
+                deferredPrompt = null;
+            });
+        });
+
+        // Check if app is running standalone
+        window.addEventListener('appinstalled', () => {
+            console.log('PWA installed');
+            installBtn.classList.add('hidden');
+        });
+
+        // Check if running in standalone mode
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            console.log('Running in standalone mode');
+        }
+    </script>
+
+    <!-- App Logic -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM Elements
+            const gfrForm = document.getElementById('gfrForm');
+            const resultsSection = document.getElementById('results');
+            const ckdEpiResult = document.getElementById('ckdEpiResult');
+            const mdrdResult = document.getElementById('mdrdResult');
+            const ckdEpiStage = document.getElementById('ckdEpiStage');
+            const mdrdStage = document.getElementById('mdrdStage');
+            const infoBtn = document.getElementById('infoBtn');
+            const historyBtn = document.getElementById('historyBtn');
+            const infoModal = document.getElementById('infoModal');
+            const historyModal = document.getElementById('historyModal');
+            const closeInfoModal = document.getElementById('closeInfoModal');
+            const closeHistoryModal = document.getElementById('closeHistoryModal');
+            const historyList = document.getElementById('historyList');
+            const clearHistory = document.getElementById('clearHistory');
+            
+            // Load history from localStorage
+            let calculationHistory = JSON.parse(localStorage.getItem('gfrHistory')) || [];
+            
+            // Modal controls
+            infoBtn.addEventListener('click', () => infoModal.classList.remove('hidden'));
+            historyBtn.addEventListener('click', () => {
+                updateHistoryDisplay();
+                historyModal.classList.remove('hidden');
+            });
+            closeInfoModal.addEventListener('click', () => infoModal.classList.add('hidden'));
+            closeHistoryModal.addEventListener('click', () => historyModal.classList.add('hidden'));
+            
+            // Clear history
+            clearHistory.addEventListener('click', () => {
+                calculationHistory = [];
+                localStorage.setItem('gfrHistory', JSON.stringify(calculationHistory));
+                updateHistoryDisplay();
+            });
+            
+            // Update history display
+            function updateHistoryDisplay() {
+                if (calculationHistory.length === 0) {
+                    historyList.innerHTML = '<p class="text-gray-500 text-center py-4">No calculations saved yet</p>';
+                    return;
+                }
+                
+                historyList.innerHTML = calculationHistory.map((item, index) => `
+                    <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="font-medium">${item.date}</p>
+                                <p class="text-sm text-gray-600">${item.sex}, ${item.age}y, ${item.race}, Cr: ${item.creatinine}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-bold text-indigo-600">${item.ckdEpi} mL/min</p>
+                                <p class="text-xs text-gray-500">${item.stage}</p>
+                            </div>
+                        </div>
+                        <button onclick="deleteHistoryItem(${index})" class="mt-2 text-xs text-red-500 hover:text-red-700">Delete</button>
+                    </div>
+                `).join('');
+            }
+            
+            // Make delete function global
+            window.deleteHistoryItem = function(index) {
+                calculationHistory.splice(index, 1);
+                localStorage.setItem('gfrHistory', JSON.stringify(calculationHistory));
+                updateHistoryDisplay();
+            };
+            
+            // GFR Calculation Formulas
+            function calculateCkdEpi(creatinine, age, sex, race) {
+                // CKD-EPI 2021 formula
+                let k = sex === 'female' ? 0.7 : 0.9;
+                let a = sex === 'female' ? -0.241 : -0.302;
+                let minCr = Math.min(creatinine / k, 1);
+                let maxCr = Math.max(creatinine / k, 1);
+                
+                let gfr = 142 * Math.pow(minCr, a) * Math.pow(maxCr, -1.2) * Math.pow(0.9938, age);
+                
+                if (sex === 'female') gfr *= 1.012;
+                if (race === 'black') gfr *= 1.159;
+                
+                return Math.round(gfr * 10) / 10;
+            }
+            
+            function calculateMDRD(creatinine, age, sex, race) {
+                // MDRD formula
+                let gfr = 175 * Math.pow(creatinine, -1.154) * Math.pow(age, -0.203);
+                
+                if (sex === 'female') gfr *= 0.742;
+                if (race === 'black') gfr *= 1.212;
+                
+                return Math.round(gfr * 10) / 10;
+            }
+            
+            function getCkdStage(gfr) {
+                if (gfr >= 90) return { stage: 'G1: Normal or high', color: 'green' };
+                if (gfr >= 60) return { stage: 'G2: Mild', color: 'blue' };
+                if (gfr >= 45) return { stage: 'G3a: Moderate', color: 'yellow' };
+                if (gfr >= 30) return { stage: 'G3b: Moderate', color: 'orange' };
+                if (gfr >= 15) return { stage: 'G4: Severe', color: 'red' };
+                return { stage: 'G5: Kidney failure', color: 'black' };
+            }
+            
+            // Form submission
+            gfrForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Get form values
+                const age = parseFloat(document.getElementById('age').value);
+                const sex = document.getElementById('sex').value;
+                const race = document.getElementById('race').value;
+                const creatinine = parseFloat(document.getElementById('creatinine').value);
+                const formula = document.getElementById('formula').value;
+                
+                // Validate inputs
+                if (isNaN(age) || isNaN(creatinine) || age < 18 || creatinine <= 0) {
+                    alert('Please enter valid values for all fields');
+                    return;
+                }
+                
+                // Calculate GFR
+                const ckdEpiGFR = calculateCkdEpi(creatinine, age, sex, race);
+                const mdrdGFR = calculateMDRD(creatinine, age, sex, race);
+                
+                // Get CKD stages
+                const ckdEpiStageInfo = getCkdStage(ckdEpiGFR);
+                const mdrdStageInfo = getCkdStage(mdrdGFR);
+                
+                // Display results
+                ckdEpiResult.textContent = ckdEpiGFR;
+                mdrdResult.textContent = mdrdGFR;
+                ckdEpiStage.textContent = ckdEpiStageInfo.stage;
+                mdrdStage.textContent = mdrdStageInfo.stage;
+                
+                // Highlight the selected formula's result
+                if (formula === 'ckd-epi') {
+                    ckdEpiResult.parentElement.parentElement.classList.add('input-highlight');
+                    mdrdResult.parentElement.parentElement.classList.remove('input-highlight');
+                } else {
+                    mdrdResult.parentElement.parentElement.classList.add('input-highlight');
+                    ckdEpiResult.parentElement.parentElement.classList.remove('input-highlight');
+                }
+                
+                // Show results section
+                resultsSection.classList.remove('hidden');
+                
+                // Save to history
+                const now = new Date();
+                const historyItem = {
+                    date: now.toLocaleDateString() + ' ' + now.toLocaleTimeString(),
+                    age: age,
+                    sex: sex === 'male' ? 'Male' : 'Female',
+                    race: race === 'black' ? 'Black' : 'Non-Black',
+                    creatinine: creatinine,
+                    ckdEpi: ckdEpiGFR,
+                    mdrd: mdrdGFR,
+                    stage: ckdEpiStageInfo.stage
+                };
+                
+                calculationHistory.unshift(historyItem);
+                if (calculationHistory.length > 10) calculationHistory.pop();
+                localStorage.setItem('gfrHistory', JSON.stringify(calculationHistory));
+            });
+            
+            // Input validation
+            document.getElementById('age').addEventListener('input', function() {
+                let value = parseFloat(this.value);
+                if (value < 18) this.value = 18;
+                if (value > 120) this.value = 120;
+            });
+            
+            document.getElementById('creatinine').addEventListener('input', function() {
+                let value = parseFloat(this.value);
+                if (value < 0.1) this.value = 0.1;
+                if (value > 20) this.value = 20;
+            });
+        });
+    </script>
+
+    <!-- Service Worker Script (inlined for demo) -->
+    <script>
+        // This would normally be in a separate sw.js file
+        const swContent = `
+            const CACHE_NAME = 'gfr-calculator-v1';
+            const ASSETS = [
+                '/',
+                '/index.html',
+                '/styles.css',
+                '/app.js',
+                'https://cdn.tailwindcss.com',
+                'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
+            ];
+
+            self.addEventListener('install', (event) => {
+                event.waitUntil(
+                    caches.open(CACHE_NAME)
+                        .then((cache) => cache.addAll(ASSETS))
+                );
+            });
+
+            self.addEventListener('fetch', (event) => {
+                event.respondWith(
+                    caches.match(event.request)
+                        .then((response) => response || fetch(event.request))
+                );
+            });
+        `;
+
+        // Create a Blob with the service worker content
+        const blob = new Blob([swContent], { type: 'application/javascript' });
+        const swUrl = URL.createObjectURL(blob);
+
+        // Register the service worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register(swUrl)
+                .then(registration => console.log('SW registered'))
+                .catch(err => console.log('SW registration failed: ', err));
+        }
+    </script>
+
+    <!-- Manifest (inlined for demo) -->
+    <script>
+        const manifest = {
+            "name": "GFR Calculator",
+            "short_name": "GFR Calc",
+            "description": "Advanced GFR Calculator using CKD-EPI and MDRD formulas",
+            "start_url": "/",
+            "display": "standalone",
+            "background_color": "#4f46e5",
+            "theme_color": "#4f46e5",
+            "icons": [
+                {
+                    "src": "icon-192.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                },
+                {
+                    "src": "icon-512.png",
+                    "sizes": "512x512",
+                    "type": "image/png"
+                }
+            ]
+        };
+
+        // Create a Blob with the manifest content
+        const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+        const manifestUrl = URL.createObjectURL(manifestBlob);
+
+        // Add the manifest link to the head
+        const link = document.createElement('link');
+        link.rel = 'manifest';
+        link.href = manifestUrl;
+        document.head.appendChild(link);
+    </script>
+</body>
+</html>
