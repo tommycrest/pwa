@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="description" content="Modern PWA Example with Service Worker">
+    <title>Modern PWA</title>
+    <link rel="manifest" href="/manifest.json">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Custom animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        
+        /* For PWA install prompt */
+        #installContainer {
+            position: fixed;
+            bottom: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+    <!-- Header -->
+    <header class="bg-indigo-600 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-rocket text-2xl"></i>
+                    <h1 class="text-2xl font-bold">Modern PWA</h1>
+                </div>
+                <nav>
+                    <ul class="flex space-x-6">
+                        <li><a href="#" class="hover:text-indigo-200 transition">Home</a></li>
+                        <li><a href="#" class="hover:text-indigo-200 transition">Features</a></li>
+                        <li><a href="#" class="hover:text-indigo-200 transition">About</a></li>
+                    </ul>
+                </nav>
+                <button id="darkModeToggle" class="p-2 rounded-full hover:bg-indigo-700 transition">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        <section class="mb-12 text-center animate-fade-in" style="animation-delay: 0.2s;">
+            <h2 class="text-4xl font-bold mb-4">Welcome to Our PWA</h2>
+            <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+                Experience the power of Progressive Web Apps with offline capabilities, 
+                fast loading, and app-like experience.
+            </p>
+        </section>
+
+        <div class="grid md:grid-cols-3 gap-8 mb-12">
+            <!-- Feature 1 -->
+            <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition animate-fade-in" style="animation-delay: 0.4s;">
+                <div class="text-indigo-600 mb-4">
+                    <i class="fas fa-bolt text-4xl"></i>
+                </div>
+                <h3 class="text-xl font-semibold mb-2">Fast Loading</h3>
+                <p class="text-gray-600">
+                    Our PWA loads instantly, even on slow networks, thanks to service worker caching.
+                </p>
+            </div>
+            
+            <!-- Feature 2 -->
+            <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition animate-fade-in" style="animation-delay: 0.6s;">
+                <div class="text-indigo-600 mb-4">
+                    <i class="fas fa-wifi-slash text-4xl"></i>
+                </div>
+                <h3 class="text-xl font-semibold mb-2">Offline Ready</h3>
+                <p class="text-gray-600">
+                    Continue using the app even when you're offline or have spotty connectivity.
+                </p>
+            </div>
+            
+            <!-- Feature 3 -->
+            <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition animate-fade-in" style="animation-delay: 0.8s;">
+                <div class="text-indigo-600 mb-4">
+                    <i class="fas fa-mobile-alt text-4xl"></i>
+                </div>
+                <h3 class="text-xl font-semibold mb-2">App-like</h3>
+                <p class="text-gray-600">
+                    Installable on your home screen with full-screen experience and smooth animations.
+                </p>
+            </div>
+        </div>
+
+        <!-- Demo Section -->
+        <section class="bg-white rounded-xl shadow-md p-6 mb-12 animate-fade-in" style="animation-delay: 1s;">
+            <h2 class="text-2xl font-semibold mb-4">Try Our Offline Demo</h2>
+            <div class="flex flex-col md:flex-row items-center gap-6">
+                <div class="flex-1">
+                    <p class="mb-4 text-gray-600">
+                        Click the button below to simulate fetching data. Then go offline and try again - 
+                        the service worker will serve cached content.
+                    </p>
+                    <button id="fetchDataBtn" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition">
+                        Fetch Data
+                    </button>
+                    <div id="dataResult" class="mt-4 p-4 bg-gray-100 rounded-lg hidden">
+                        <p class="font-medium">Data fetched successfully!</p>
+                        <p class="text-sm text-gray-500 mt-1" id="dataSource"></p>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <div class="bg-gray-100 p-4 rounded-lg">
+                        <div class="flex items-center mb-2">
+                            <div class="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
+                            <span class="text-sm font-medium">Network Status:</span>
+                            <span id="networkStatus" class="ml-2 text-sm">Online</span>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+                            <span class="text-sm font-medium">Service Worker:</span>
+                            <span id="swStatus" class="ml-2 text-sm">Checking...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Install Prompt -->
+    <div id="installContainer" class="bg-white p-4 rounded-lg shadow-xl max-w-md">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="font-bold text-lg">Install Our App</h3>
+            <button id="closeInstall" class="text-gray-500 hover:text-gray-700">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <p class="text-gray-600 mb-4">Add this app to your home screen for a better experience.</p>
+        <button id="installBtn" class="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition">
+            Install Now
+        </button>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <h2 class="text-xl font-bold">Modern PWA</h2>
+                    <p class="text-gray-400">© 2023 All Rights Reserved</p>
+                </div>
+                <div class="flex space-x-4">
+                    <a href="#" class="text-gray-400 hover:text-white transition">
+                        <i class="fab fa-twitter text-xl"></i>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-white transition">
+                        <i class="fab fa-github text-xl"></i>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-white transition">
+                        <i class="fab fa-linkedin text-xl"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Service Worker Registration -->
+    <script>
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                        document.getElementById('swStatus').textContent = 'Active';
+                    })
+                    .catch(err => {
+                        console.log('ServiceWorker registration failed: ', err);
+                        document.getElementById('swStatus').textContent = 'Failed';
+                    });
+            });
+        } else {
+            document.getElementById('swStatus').textContent = 'Not Supported';
+        }
+
+        // Network status detection
+        function updateNetworkStatus() {
+            const statusElement = document.getElementById('networkStatus');
+            if (navigator.onLine) {
+                statusElement.textContent = 'Online';
+                statusElement.classList.remove('text-red-500');
+                statusElement.classList.add('text-green-500');
+            } else {
+                statusElement.textContent = 'Offline';
+                statusElement.classList.remove('text-green-500');
+                statusElement.classList.add('text-red-500');
+            }
+        }
+
+        window.addEventListener('online', updateNetworkStatus);
+        window.addEventListener('offline', updateNetworkStatus);
+        updateNetworkStatus();
+
+        // Demo fetch functionality
+        document.getElementById('fetchDataBtn').addEventListener('click', async () => {
+            const resultElement = document.getElementById('dataResult');
+            const sourceElement = document.getElementById('dataSource');
+            
+            try {
+                const response = await fetch('https://jsonplaceholder.typicode.com/posts/1');
+                const data = await response.json();
+                
+                resultElement.classList.remove('hidden');
+                sourceElement.textContent = navigator.onLine ? 
+                    'Data came from the network' : 'Data came from service worker cache';
+            } catch (error) {
+                resultElement.classList.remove('hidden');
+                resultElement.innerHTML = '<p class="font-medium text-red-500">Failed to fetch data</p>';
+                sourceElement.textContent = 'No cached data available';
+            }
+        });
+
+        // Dark mode toggle
+        document.getElementById('darkModeToggle').addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            const icon = document.querySelector('#darkModeToggle i');
+            if (document.documentElement.classList.contains('dark')) {
+                icon.classList.replace('fa-moon', 'fa-sun');
+                document.body.classList.add('bg-gray-900');
+                document.body.classList.remove('bg-gray-50');
+            } else {
+                icon.classList.replace('fa-sun', 'fa-moon');
+                document.body.classList.remove('bg-gray-900');
+                document.body.classList.add('bg-gray-50');
+            }
+        });
+
+        // PWA install prompt
+        let deferredPrompt;
+        const installContainer = document.getElementById('installContainer');
+        const installBtn = document.getElementById('installBtn');
+        const closeInstall = document.getElementById('closeInstall');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent the mini-infobar from appearing on mobile
+            e.preventDefault();
+            // Stash the event so it can be triggered later
+            deferredPrompt = e;
+            // Show the install button
+            installContainer.style.display = 'block';
+            
+            // Log the install prompt event
+            console.log('beforeinstallprompt fired', e);
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            
+            // Show the install prompt
+            deferredPrompt.prompt();
+            // Wait for the user to respond to the prompt
+            const { outcome } = await deferredPrompt.userChoice;
+            // Log the result
+            console.log(`User response to the install prompt: ${outcome}`);
+            // Hide the install button
+            installContainer.style.display = 'none';
+            // We've used the prompt, and can't use it again, throw it away
+            deferredPrompt = null;
+        });
+
+        closeInstall.addEventListener('click', () => {
+            installContainer.style.display = 'none';
+        });
+
+        window.addEventListener('appinstalled', () => {
+            // Log install to analytics
+            console.log('PWA was installed');
+            installContainer.style.display = 'none';
+        });
+    </script>
+</body>
+</html>
